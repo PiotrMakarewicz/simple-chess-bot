@@ -121,7 +121,7 @@ class MonteCarloNode:
             current.T = current.T + current.rollout()
         else:
             current.create_child()
-            if len(current.child) > 0:
+            if current.child is not None and len(current.child) > 0:
                 _, current = random.choice(list(current.child.items()))
             current.T = current.T + current.rollout()
             

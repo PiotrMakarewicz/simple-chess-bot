@@ -8,7 +8,7 @@ import pickle
 
 model = None
 mc_node = None
-EXPLORATION_ITERATIONS = 100
+EXPLORATION_ITERATIONS = 1000
 
 def human_turn(board):
     move = None
