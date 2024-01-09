@@ -1,6 +1,8 @@
-from math import sqrt, log
+from math import sqrt, log, fabs
 from copy import deepcopy
 import random
+
+import chess
 
 # adapted from https://medium.com/@_michelangelo_/monte-carlo-tree-search-mcts-algorithm-for-dummies-74b2bae53bfa
 class MonteCarloNode:
@@ -10,7 +12,7 @@ class MonteCarloNode:
     It contains the information needed for the algorithm to run its search.
     '''
 
-    def __init__(self, root_board, is_leaf, parent, node_board, move_stack, evaluation_func, exploration_factor=1.4, max_depth=200):
+    def __init__(self, root_board, is_leaf, parent, node_board, move_stack, evaluation_func, exploration_factor=2e2, max_rollout_depth=8, player_color=chess.WHITE):
           
         # child nodes
         self.child = None
@@ -38,7 +40,8 @@ class MonteCarloNode:
 
         self.evaluation_func = evaluation_func 
         self.exploration_factor = exploration_factor
-        self.max_depth = max_depth
+        self.max_rollout_depth = max_rollout_depth
+        self.player_color = player_color
 
 
     def getUCBscore(self):
@@ -75,13 +78,11 @@ class MonteCarloNode:
         actions = self.node_board.legal_moves
         child_boards = [deepcopy(self.node_board) for _ in actions]
         child = {}
-        
-        is_max_depth = len(self.move_stack) >= self.max_depth
 
         for move, board in zip(actions, child_boards):
             board.push(move)
             child[move] = MonteCarloNode(root_board=self.root_board,
-                               is_leaf=is_max_depth or board.is_game_over(),
+                               is_leaf=board.is_game_over(),
                                parent=self,
                                node_board=board,
                                move_stack=self.move_stack + [move], 
@@ -146,23 +147,29 @@ class MonteCarloNode:
         Taken alone, this value is quite random, but, the more rollouts we will do for such node,
         the more accurate the average of the value for such node will be. This is at the core of the MCTS algorithm.
         '''
-
         
         if self.is_leaf:
             return self.evaluation_func(self.node_board)        
     
         is_leaf = False
-        child_board = deepcopy(self.node_board)
-        move_stack = deepcopy(self.move_stack)
-        while not is_leaf:
-            action = random.choice(list(child_board.legal_moves))
-            child_board.push(action)
-            move_stack.append(action)
-            is_leaf = child_board.is_game_over() or len(move_stack) >= self.max_depth
-        
-        turn_factor = 1 if self.node_board.turn == child_board.turn else -1   
 
-        return turn_factor * self.evaluation_func(child_board)
+        rollout_depth = 0
+
+        while not is_leaf:
+            action = random.choice(list(self.node_board.legal_moves))
+            self.node_board.push(action)
+            is_leaf = self.node_board.is_game_over() or rollout_depth >= self.max_rollout_depth 
+            rollout_depth += 1
+        
+        # Get evaluation
+        black_white_factor = 1 if self.player_color == chess.WHITE else -1
+        eval = black_white_factor * self.evaluation_func(self.node_board)
+
+        # Restore the state of the board before the rollout
+        for _ in range(rollout_depth):
+            self.node_board.pop()
+
+        return eval
 
 
     def next(self):
@@ -181,15 +188,16 @@ class MonteCarloNode:
         
         child = self.child
         
-        max_N = max(node.N for node in child.values())
+        max_reward = max(node.T for node in child.values())
        
-        max_children = [ (a, c) for a,c in child.items() if c.N == max_N ]
+        max_children = [ (a, c) for a,c in child.items() if c.T == max_reward]
         
-        if len(max_children) == 0:
-            print("error zero length ", max_N) 
-            
         max_child = random.choice(max_children)
 
-        action, next_root = deepcopy(max_child)
+        ### Print evaluation for all legal moves
+        for action, node in child.items():
+            print(action, node.N, node.T, node.T / node.N)
+
+        action, next_root = max_child
         
         return action, next_root 
