@@ -1,6 +1,7 @@
 from math import sqrt, log, fabs
 from copy import deepcopy
 import random
+from utils import contains_pawn
 
 import chess
 
@@ -12,7 +13,7 @@ class MonteCarloNode:
     It contains the information needed for the algorithm to run its search.
     '''
 
-    def __init__(self, root_board, is_leaf, parent, node_board, move_stack, evaluation_func, exploration_factor=2e2, max_rollout_depth=8, player_color=chess.WHITE):
+    def __init__(self, root_board, is_leaf, parent, node_board, move_stack, evaluation_func, exploration_factor=2e2, max_rollout_depth=50, player_color=chess.WHITE):
           
         # child nodes
         self.child = None
@@ -161,9 +162,12 @@ class MonteCarloNode:
             is_leaf = self.node_board.is_game_over() or rollout_depth >= self.max_rollout_depth 
             rollout_depth += 1
         
-        # Get evaluation
-        black_white_factor = 1 if self.player_color == chess.WHITE else -1
-        eval = black_white_factor * self.evaluation_func(self.node_board)
+        if self.can_be_evaluated(self.node_board):
+            # Get evaluation
+            black_white_factor = 1 if self.player_color == chess.WHITE else -1
+            eval = black_white_factor * self.evaluation_func(self.node_board)
+        else:
+            eval = 0
 
         # Restore the state of the board before the rollout
         for _ in range(rollout_depth):
@@ -171,6 +175,9 @@ class MonteCarloNode:
 
         return eval
 
+    def can_be_evaluated(self, board):
+        return not contains_pawn(board)
+        
 
     def next(self):
         ''' 

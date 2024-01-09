@@ -1,4 +1,5 @@
 import chess
+from chess import pgn
 from copy import deepcopy
 from montecarlo.MonteCarloNode import MonteCarloNode
 from board.BoardEncoder import BoardEncoder
@@ -8,7 +9,10 @@ from stockfish import Stockfish
 
 
 USE_MODEL_EVALUATOR = True  # False for Syzygy, True for model
-USE_STOCKFISH_FOR_TESTING = True
+USE_STOCKFISH_FOR_TESTING = True  # false to allowing typing in moves interactively
+
+KQ_K_MODEL = '../models/model-20231218192512.pkl'
+KQ_OR_KP_K_MODEL = '../models/model-20240109150324.pkl'
 
 evaluator = None
 mc_node = None
@@ -26,9 +30,8 @@ def human_turn(board):
             print('Invalid move. Error: ', e)
     return move, _board
 
-def load_model_evaluator():
+def load_model_evaluator(load_path=KQ_K_MODEL):
     global evaluator
-    load_path = '../models/model-20231218192512.pkl'
     with open(load_path, 'rb') as file:
         model = pickle.load(file)
         evaluator = ModelBasedEvaluator(model)
@@ -75,7 +78,7 @@ stockfish = Stockfish(parameters={
         "UCI_LimitStrength": "false",
         "UCI_Elo": 1350
     })
-stockfish.set_elo_rating(3000)
+stockfish.set_elo_rating(3500)
 
 def stockfish_turn(board):
     global stockfish
@@ -91,23 +94,56 @@ def opponent_turn(board):
     else:
         return human_turn(board)
 
+
+def print_pgn(board):
+    pgn_game = pgn.Game().from_board(board)
+    print(pgn_game)
+
+
+KQ_K_FEN = '8/8/8/8/3K4/8/3k4/3q4 w - - 0 1' # king + queen vs king
+KP_K_FEN = 'k7/8/8/8/8/8/4P3/7K w - - 0 1' # king + pawn vs king
+
 def play():
-    starting_fen = '8/8/8/8/3K4/8/3k4/3q4 w - - 0 1'
+    starting_fen = KP_K_FEN
     board = chess.Board(starting_fen)
     print(board)
 
     while not board.is_game_over():
-        move, board = opponent_turn(board)
+        move, board = ai_turn(board)
+        print(f'AI played: {move.uci()}')
         print(board)
         if board.is_game_over():
             break
-        move, board = ai_turn(board)
-        print(f'AI played: {move.uci()}')
+        move, board = opponent_turn(board)
         print(board)
         
     print("Game finished!")
     print(board.result())
     print("Game length: ", board.fullmove_number)
+    print_pgn(board)
+    
+
+# def collect_positions_for_training(n_games=100000):
+#     starting_fen = KQ_K_FEN
+#     board = chess.Board(starting_fen)
+#     print(board)
+#     positions = []
+#     while not board.is_game_over():
+#         move, board = ai_turn(board)
+#         print(f'AI played: {move.uci()}')
+#         print(board)
+#         positions.append(BoardEncoder.encode(board))
+#         if board.is_game_over():
+#             break
+#         move, board = opponent_turn(board)
+#         print(board)
+#         positions.append(BoardEncoder.encode(board))
+        
+#     print("Game finished!")
+#     print(board.result())
+#     print("Game length: ", board.fullmove_number)
+#     print_pgn(board)
+#     return positions
 
 if __name__ == '__main__':
     if USE_MODEL_EVALUATOR:
