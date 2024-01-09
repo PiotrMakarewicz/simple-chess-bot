@@ -7,7 +7,7 @@ import pickle
 from stockfish import Stockfish
 
 
-USE_MODEL_EVALUATOR = False  # False for Syzygy, True for model
+USE_MODEL_EVALUATOR = True  # False for Syzygy, True for model
 USE_STOCKFISH_FOR_TESTING = True
 
 evaluator = None

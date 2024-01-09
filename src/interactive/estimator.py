@@ -12,8 +12,16 @@ class ModelBasedEvaluator(Evaluator):
         self.model = model
     
     def evaluate(self, board):
+        turn_factor = -1 if board.turn == chess.WHITE else 1
+        if board.is_game_over():
+            if board.outcome().result() == '1/2-1/2':
+                return 0
+            elif board.outcome().winner == chess.WHITE:
+                return 1000 * turn_factor
+            else:
+                return -1000 * turn_factor
         X = bitarray_to_ndarray(BoardEncoder.encode(board)).reshape(1, -1)
-        return self.model.predict(X)[0]
+        return self.model.predict(X)[0]*turn_factor
 
 
 class SyzygyEvaluator(Evaluator):
@@ -35,9 +43,9 @@ class SyzygyEvaluator(Evaluator):
             if board.outcome().result() == '1/2-1/2':
                 return 0
             elif board.outcome().winner == chess.WHITE:
-                return 102 * turn_factor
+                return 1000 * turn_factor
             else:
-                return -102 * turn_factor
+                return -1000 * turn_factor
         
 
         dtz = self.tablebase.probe_dtz(board)
