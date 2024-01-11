@@ -65,6 +65,30 @@ class SyzygyEvaluator(Evaluator):
         elif dtz < 0:
             return (min(-101-dtz, -50)) * turn_factor
         return 0
-    
+
+
+class SyzygyEvaluator2(Evaluator):
+    def __init__(self, tablebase: syzygy.Tablebase):
+        self.tablebase = tablebase
+
+    def evaluate(self, board):
+        side_to_move = board.turn
+
+        if board.is_game_over():
+            if board.outcome().result() == '1/2-1/2':
+                return 0
+            elif board.outcome().winner == side_to_move:
+                return 1000
+            else:
+                return -1000
+
+        dtz = self.tablebase.probe_dtz(board)
+        if dtz > 0:
+            return max(101 - dtz, 50)
+        elif dtz < 0:
+            return min(-101 - dtz, -50)
+        return 0
+
+
     
 

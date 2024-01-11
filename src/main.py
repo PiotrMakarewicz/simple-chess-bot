@@ -2,13 +2,12 @@ import chess
 from chess import pgn
 from copy import deepcopy
 from montecarlo.MonteCarloNode import MonteCarloNode
-from board.BoardEncoder import BoardEncoder
-from interactive.estimator import ModelBasedEvaluator, SyzygyEvaluator
+from interactive.estimator import ModelBasedEvaluator, SyzygyEvaluator2
 import pickle
 from stockfish import Stockfish
+import minimax
 
-
-USE_MODEL_EVALUATOR = True  # False for Syzygy, True for model
+USE_MODEL_EVALUATOR = False  # False for Syzygy, True for model
 USE_STOCKFISH_FOR_TESTING = True  # false to allowing typing in moves interactively
 
 KQ_K_MODEL = '../models/model-20231218192512.pkl'
@@ -40,7 +39,7 @@ def load_syzygy_evaluator():
     global evaluator
     load_path = '../tables/standard/3-4-5'
     tablebase = chess.syzygy.open_tablebase(load_path)
-    evaluator = SyzygyEvaluator(tablebase)
+    evaluator = SyzygyEvaluator2(tablebase)
 
 def ai_turn(board):
     global mc_node, evaluator
@@ -61,6 +60,13 @@ def ai_turn(board):
 
     move, mc_node = mc_node.next()
     return move, mc_node.node_board
+
+def ai_turn_minimax(board):
+    move, value = minimax.search(board, evaluator)
+    new_board = deepcopy(board)
+    new_board.push(move)
+    print(f"estimated value: {value}")
+    return move, new_board
 
 stockfish = Stockfish(parameters={
         "Debug Log File": "",
@@ -109,7 +115,7 @@ def play():
     print(board)
 
     while not board.is_game_over():
-        move, board = ai_turn(board)
+        move, board = ai_turn_minimax(board)
         print(f'AI played: {move.uci()}')
         print(board)
         if board.is_game_over():
